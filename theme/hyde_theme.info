@@ -1,0 +1,7 @@
+name = Hyde
+core = 7.x
+description = Placeholder theme to activate use of Hyde generated theme
+package = Hyde
+
+features[] = name
+regions[content] = Content

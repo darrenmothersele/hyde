@@ -1,0 +1,388 @@
+<?php
+
+// TODO: this code has been quickly hacked together to prove a point.
+// Don't take any example from what is going on here.
+
+
+function hyde_dpm($object, $id = 'hyde_debug', $html = FALSE) {
+  if ($html) {
+    watchdog($id, htmlentities($object));
+  }
+  else {
+    watchdog($id, '<pre>' . print_r($object, TRUE) . '</pre>');
+  }
+}
+
+
+function hyde_get_extractor($name = '') {
+  ctools_include('plugins');
+  $extractors = ctools_get_plugins('hyde', 'extracts');
+  if (isset($extractors[$name])) {
+    return $extractors[$name];
+  }
+  return FALSE;
+}
+
+function hyde_system_theme_info() {
+  $theme = hyde_get_theme();
+  if (!empty($theme->info_file)) {
+    return array('hyde_theme' => $theme->info_file);
+  }
+  return array(
+    'hyde_theme' => drupal_get_path('module', 'hyde') . '/theme/hyde_theme.info',
+  );
+}
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function hyde_entity_info_alter(&$entity_info) {
+  //dpm($entity_info);
+  $theme = hyde_get_theme();
+  if (!empty($theme->view_modes)) {
+    foreach ($theme->view_modes as $view_mode_name => $info) {
+      foreach ($entity_info as $entity_name => $data) {
+        $entity_info[$entity_name]['view modes'][$view_mode_name] = array(
+          'label' => $info['label'],
+          'custom settings' => FALSE,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_preprocess().
+ */
+//function hyde_preprocess(&$variables, $hook) {
+  //dpm($hook);
+//}
+
+/** DS LAYOUTS ETC */
+function hyde_ds_layout_info_alter(&$layouts) {
+  // dpm($layouts);
+  $theme = hyde_get_theme();
+  if (!empty($theme->view_modes)) {
+    // TODO: option to disable non-hyde layouts $layouts = array();
+    foreach ($theme->view_modes as $name => $view) {
+      $layouts[$name] = array(
+        'label' => $view['label'],
+        'path' => '',
+        'regions' => $view['regions'],
+        'css' => FALSE,
+        'image' => FALSE,
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_system_info_alter().
+ */
+function hyde_system_info_alter(&$info, $file, $type) {
+  // Only fill this in if the .info file does not define a 'datestamp'.
+  /*
+   *if (empty($info['datestamp'])) {
+   *  $info['datestamp'] = filemtime($file->filename);
+   *} theme_get_setting
+   */
+  if ($type == 'theme') {
+    //dpm($file);
+    //dpm($info);
+    if ($file->name == 'hyde_theme') {
+      //dpm($info);
+      $theme = hyde_get_theme();
+      $info['name'] = $theme->name;
+      $info['core'] = '7.x';
+      if (!empty($theme->logo)) {
+        $info['settings']['default_logo'] = FALSE;
+        $info['settings']['logo_path'] = $theme->logo;
+      }
+      $info['features'] = array('name', 'logo');
+      $info['regions']['content'] = 'Content';
+      //dpm($theme);
+      if (!empty($theme->stylesheets)) {
+        foreach ($theme->stylesheets as $css) {
+          $info['stylesheets']['all'][] = $css;
+        }
+      }
+      if (!empty($theme->scripts)) {
+        foreach ($theme->scripts as $js) {
+          $info['scripts'][] = $js;
+        }
+      }
+    }
+    //dpm($info);
+  }
+}
+
+/**
+ * Implements hook_theme_registry_alter().
+ */
+function hyde_theme_registry_alter(&$theme_registry) {
+  // TODO: can this be done just in code?
+  $theme = hyde_get_theme();
+  if (!empty($theme->templates)) {
+    foreach ($theme->templates as $hook => $code) {
+      if (isset($theme_registry[$hook]['template'])) {
+        //unset($theme_registry[$hook]['template']);
+      }
+      $theme_registry[$hook]['function'] = 'hyde_generic_theme_function';
+      //$theme_registry[$hook]['variables']['hyde_hook'] = $hook;
+      $theme_registry[$hook]['preprocess functions'][] = 'hyde_generic_template_theme_function_pre';
+    }
+  }
+  //$theme = hyde_get_theme();
+  if (!empty($theme->view_modes)) {
+    foreach ($theme->view_modes as $hook => $info) {
+      if (isset($theme_registry[$hook]['template'])) {
+        unset($theme_registry[$hook]['template']);
+      }
+      $theme_registry[$hook]['function'] = 'hyde_generic_view_mode_theme_function';
+    }
+  }
+  //dpm($theme_registry);
+}
+
+function hyde_generic_template_theme_function_pre(&$vars, $hook) {
+  $vars['hyde_theme_key'] = $hook;
+  $vars['hyde_theme_hook'] = 'templates';
+}
+
+function hyde_generic_view_mode_theme_function(&$vars) {
+  $vars['hyde_theme_key'] = $vars['view_mode'];
+  $vars['hyde_theme_hook'] = 'view_modes';
+  return hyde_generic_theme_function($vars);
+}
+function hyde_generic_template_theme_function(&$vars) {
+  //dpm($vars);
+  //$vars['hyde_theme_key'] = $vars['view_mode'];
+  //$vars['hyde_theme_key'] = 'page';
+  //$vars['hyde_theme_hook'] = 'templates';
+  return hyde_generic_theme_function($vars);
+}
+
+function hyde_generic_theme_function(&$vars) {
+  //hyde_dpm($vars, 'th');
+  // dpm($vars); return;
+  extract($vars, EXTR_SKIP);
+  ob_start();
+  $theme = hyde_get_theme();
+  //dpm($theme);
+  //dpm($theme->{$key}[$hook]['template']);
+  eval('?>' . $theme->{$hyde_theme_hook}[$hyde_theme_key]['template'] . '<?php ');
+  return ob_get_clean();
+}
+
+/**
+ * Implements hook_init().
+ */
+function hyde_init() { /*
+  $theme = hyde_get_theme();
+  if (!empty($theme->stylesheets)) {
+    foreach ($theme->stylesheets as $path) {
+      // drupal_add_css($path);
+    }
+  } */
+}
+
+function hyde_make_tempdir() {
+  $tmp_dir = file_directory_temp();
+  $tmp_dir .= '/' . 'hyde_tmp_' . uniqid(time() . '_');
+
+  drupal_mkdir($tmp_dir);
+  return $tmp_dir;
+}
+function hyde_export_ini($ini) {
+  $output = '';
+  foreach ($ini as $section => $pairs) {
+    if ($section) {
+      $output .= "[$section]\n";
+    }
+
+    foreach ($pairs as $k => $v) {
+      if ($v) {
+        $output .= "$k = \"$v\"\n";
+      }
+    }
+  }
+  return $output;
+}
+
+function hyde_get_theme() {
+  return variable_get('hyde_theme_object', NULL);
+}
+
+function hyde_rrmdir($dir) {
+ if (is_dir($dir)) {
+   $objects = scandir($dir);
+   foreach ($objects as $object) {
+     if ($object != "." && $object != "..") {
+       if (filetype($dir."/".$object) == "dir") hyde_rrmdir($dir."/".$object); else unlink($dir."/".$object);
+     }
+   }
+   reset($objects);
+   rmdir($dir);
+ }
+}
+
+function hyde_replace_php_tags($html) {
+  //hyde_dpm($html);
+  return str_replace(array('{{[[PHP_OPEN', 'PHP_CLOSE]]}}'), array('<?php', '?>'), $html);
+}
+
+//TODO: move to plugin?
+function _hyde_html_preprocess($filepath, $type, $src_attr, $key, $html, $theme) {
+  foreach ($html->find($type) as $el) {
+    if (!$el->hasAttr('x-drupal-skip')) {
+      $src = dirname($filepath) . '/' . $el->attr($src_attr);
+      $dst = $theme->tmp_path . '/' . $el->attr($src_attr);
+      if (!file_exists(dirname($dst))) {
+        mkdir(dirname($dst), 0777, TRUE);
+      }
+      copy($src, $dst);
+      $theme->{$key}[] = $el->attr($src_attr);
+    }
+    $el->remove();
+  }
+}
+
+/**
+ * Implements hook_image_default_styles().
+ */
+function hyde_image_default_styles() {
+  $theme = hyde_get_theme();
+  if (!empty($theme->image_styles)) {
+    return $theme->image_styles;
+  }
+}
+
+function hyde_build_theme() {
+  // TODO: use our own Theme class
+  $theme = new stdClass();
+  $theme->name = "Hyde generated theme";
+
+  $theme->source_path = variable_get('hyde_prototype_path', '');
+  if (!empty($theme->source_path)) {
+    $theme->tmp_path = hyde_make_tempdir();
+    querypath_include_code();
+    foreach (file_scan_directory($theme->source_path, '|.html$|') as $filepath => $file) {
+
+      $html = htmlqp(file_get_contents($filepath));
+      _hyde_html_preprocess($filepath, 'link[rel=stylesheet]', 'href', 'stylesheets', $html, $theme);
+      _hyde_html_preprocess($filepath, 'script[src]', 'src', 'scripts', $html, $theme);
+
+      // Preprocess CSS and JS in comments (i.e. Drupal specific)
+      $nodes = $html->find('head')->get();
+      //dpm($nodes);
+      foreach ($nodes as $node) {
+        foreach ($node->childNodes as $child) {
+          //dpm($child);
+          if ($child->nodeType == XML_COMMENT_NODE) {
+            //dpm($child->textContent);
+            $temp = htmlqp($child->textContent);
+            //dpm($temp);
+            //dpm($temp->find('link[rel=stylesheet]')->attr('href'));
+            _hyde_html_preprocess($filepath, 'link[rel=stylesheet]', 'href', 'stylesheets', $temp, $theme);
+          }
+        }
+      }
+
+      // Extract logo if it exists
+      // TODO: better way of getting dest location - no hardcoded!
+      // TODO: Also do favicon
+      $logo = $html->find('[x-drupal-logo]');
+      if ($logo->size()) {
+        $src = dirname($filepath) . '/' . $logo->attr('src');
+        $dst = $theme->tmp_path . '/' . $logo->attr('src');
+        $theme->logo = 'sites/default/files/generated/' . $logo->attr('src');
+        if (!file_exists(dirname($dst))) {
+          mkdir(dirname($dst), 0777, TRUE);
+        }
+        copy($src, $dst);
+        $logo->removeAttr('x-drupal-logo');
+      }
+
+      $partials = array();
+      foreach ($html->find('[x-drupal-type]') as $element) {
+        //dpm();
+        $partials[(string) $element->attr('x-drupal-type')][(string) $element->attr('x-drupal-name')] = clone $element;
+      }
+      //dpm($partials);
+
+      foreach ($partials as $type => $items) {
+        //dpm("type: " . $type);
+        if ($extractor = hyde_get_extractor($type)) {
+          $callback = $extractor['callback'];
+          foreach ($items as $name => $item) {
+            $callback($item, $theme);
+            //dpm($theme);
+          }
+        }
+      }
+
+      /* this was an old way of doing it that broken when attributes changed
+      foreach ($html->find('[x-drupal-type]') as $element) {
+        if ($extractor = hyde_get_extractor($element->attr('x-drupal-type'))) {
+          dpm($extractor);
+          //if (!in_array($extractor['name'], array())) {
+            $callback = $extractor['callback'];
+            $callback(clone $element, $theme);
+          //}
+        }
+      }
+      */
+    }
+
+    // Generate a theme *.info file
+    $info = "; Placeholder *.info file\nname => Auto-generated Theme\n";
+    file_put_contents("{$theme->tmp_path}/generated.info", $info);
+    // TODO: hack! sort this out!
+    $theme->info_file = "sites/default/files/generated/generated.info";
+
+    // Copy the generated theme to the sites theme folder...
+    $theme_location = drupal_realpath('public://generated');
+    if (file_exists($theme_location)) {
+      hyde_rrmdir($theme_location);
+    }
+    rename($theme->tmp_path, $theme_location);
+    // dpm($theme);
+    unset($theme->source_path);
+    unset($theme->tmp_path);
+    variable_set('hyde_theme_object', $theme);
+    drupal_theme_rebuild();
+  }
+}
+
+
+function hyde_views_api() {
+  return array(
+    'api' => 3,
+  );
+}
+
+
+/**
+ * Implements hook_ctools_plugin_type() to inform CTools about the layout plugin.
+ */
+function hyde_ctools_plugin_type() {
+  $plugins['extracts'] = array();
+  return $plugins;
+}
+function hyde_ctools_plugin_directory($module, $plugin) {
+  if ($module == 'hyde' && $plugin == 'extracts') {
+    return 'plugins/extracts';
+  }
+  if ($module == 'panels' && $plugin == 'layouts') {
+    return 'plugins/layouts';
+  }
+  if ($module == 'panels' && $plugin == 'styles') {
+    return 'plugins/styles';
+  }
+  if ($module == 'ctools' && $plugin == 'content_types') {
+    return 'plugins/content_types';
+  }
+}
+
+
+

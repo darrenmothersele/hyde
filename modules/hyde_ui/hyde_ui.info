@@ -1,0 +1,8 @@
+name = Hyde UI
+description = User interface for working with Hyde themes during development
+core = 7.x
+package = Hyde
+
+dependencies[] = hyde
+dependencies[] = querypath
+dependencies[] = devel

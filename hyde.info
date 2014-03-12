@@ -1,0 +1,10 @@
+name = Hyde Core
+description = Core functionality for sites using themes generated using Hyde
+core = 7.x
+package = Hyde
+
+dependencies[] = ctools
+dependencies[] = ds
+dependencies[] = panels
+
+files[] = views/views_plugin_style.inc

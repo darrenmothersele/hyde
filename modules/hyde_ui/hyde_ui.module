@@ -1,0 +1,34 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function hyde_ui_menu() {
+
+  $items['admin/appearance/hyde'] = array(
+    'title' => 'Theme Generator',
+    'page callback' => 'hyde_ui_admin_page',
+    'access arguments' => array('administer hyde'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'hyde_ui.admin.inc',
+  );
+  $items['admin/appearance/hyde/status'] = array(
+    'title' => 'Status',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -9,
+  );
+  $items['admin/appearance/hyde/settings'] = array(
+    'title' => 'Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('hyde_ui_admin_settings_form'),
+    'access arguments' => array('administer hyde'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'hyde_ui.admin.inc',
+  );
+
+  return $items;
+}
+
+function hyde_ui_sync_batch_finished($success, $results, $operations) {
+  drupal_set_message("Hyde build completed");
+}
