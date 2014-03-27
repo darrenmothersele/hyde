@@ -37,8 +37,10 @@ function hyde_box_styles_get_substyle($plugin, $style_name, $substyle_name) {
 function hyde_box_styles_get_substyles($plugin, $style_name) {
   $styles = array();
   $theme = hyde_get_theme();
-  foreach ($theme->box_styles as $name => $style) {
-    $styles['hyde_box:' . $name] = hyde_box_styles_merge_plugin($plugin, $style);
+  if (!empty($theme->box_styles)) {
+    foreach ($theme->box_styles as $name => $style) {
+      $styles['hyde_box:' . $name] = hyde_box_styles_merge_plugin($plugin, $style);
+    }
   }
   return $styles;
 }

@@ -1,6 +1,8 @@
 <?php
 
 
+
+
 function hyde_ui_sync_form($form, &$form_state) {
   $form = array();
 
@@ -44,6 +46,101 @@ function hyde_ui_admin_page() {
 
   return $content;
 }
+
+
+function hyde_ui_atom_generator_form($form, &$form_state) {
+
+
+  $groups = array();
+  $options = array();
+
+  foreach (hyde_atom_fetch_all() as $key => $item) {
+    if (!isset($item['group'])) {
+      $item['group'] = t('Common');
+    }
+    else {
+      $item['group'] = t('@group', array('@group' => $item['group']));
+    }
+    $item['title'] = t('@title', array('@title' => $item['title']));
+    $groups[$item['group']][$key] = $item;
+    $options[$item['group']][$key] = $item['title'];
+  }
+  ksort($groups);
+
+  //dpm($groups);
+
+  $form['hyde_atoms'] = array(
+    '#type' => 'select',
+    '#title' => 'Atom generator',
+    '#options' => $options,
+  );
+
+  $form['generate'] = array(
+    '#type' => 'button',
+    '#value' => t('Generate'),
+    '#ajax' => array(
+      'callback' => 'hyde_atom_generator_js',
+      'wrapper' => 'hyde-atom-wrapper',
+      'method' => 'replace',
+    ),
+  );
+
+  $form['example'] = array(
+    '#prefix' => '<div id="hyde-atom-wrapper">',
+    '#suffix' => '</div>',
+  );
+  $form['example']['inner'] = array(
+    '#markup' => t('Select an atom to generate code'),
+  );
+
+  return $form;
+}
+
+function hyde_atom_fetch_all() {
+  $path = drupal_get_path('module', 'styleguide');
+  // Include modules for which we implement styleguides.
+  $modules = module_list();
+  foreach ($modules as $module) {
+    if (file_exists($path . '/modules/' . $module . '.inc')) {
+      include_once $path . '/modules/' . $module . '.inc';
+    }
+  }
+
+  // Get visual testing elements.
+  $items = module_invoke_all('styleguide');
+  drupal_alter('styleguide', $items);
+  return $items;
+}
+
+function hyde_atom_fetch($atom_name) {
+  $items = hyde_atom_fetch_all();
+  //dpm($items[$atom_name]);
+  return $items[$atom_name];
+}
+
+function hyde_atom_generator_js($form, &$form_state) {
+  //dpm($form_state['values']);
+  unset($form['example']['inner']);
+  $element = hyde_atom_fetch($form_state['values']['hyde_atoms']);
+  $atom = theme('styleguide_item', $element);
+  if (is_array($element['content'])) {
+    $element['content'] = drupal_render($element['content']);
+  }
+
+  $form['example']['inner']['code'] = array(
+    //'#type' => 'textarea',
+    '#prefix' => '<div style="border:1px solid #ccc; padding: 1em; margin-bottom: 1em;"><textarea style="width:100%;height:200px">',
+    '#suffix' => '</textarea></div>',
+    '#markup' => ($element['content']),
+  );
+  $form['example']['inner']['example'] = array(
+    '#prefix' => '<div style="border:1px solid #ccc; padding: 1em; margin-bottom: 1em;">',
+    '#suffix' => '</div>',
+    '#markup' => $element['content'],
+  );
+  return $form['example'];
+}
+
 
 function hyde_ui_admin_settings_form($form, &$form_state) {
   $form = array();

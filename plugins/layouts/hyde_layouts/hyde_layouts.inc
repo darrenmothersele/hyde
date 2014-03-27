@@ -60,9 +60,11 @@ function hyde_panels_get_sublayouts($plugin, $layout_name) {
   //$layouts[$layout_name] = $plugin;
   $theme = hyde_get_theme();
   //dpm($theme);
-  foreach ($theme->layouts as $name => $layout) {
-    $layout['name'] = 'hyde_layouts:' . $name;
-    $layouts['hyde_layouts:' . $name] = hyde_panels_layout_merge_plugin($plugin, $layout);
+  if (!empty($theme->layouts)) {
+    foreach ($theme->layouts as $name => $layout) {
+      $layout['name'] = 'hyde_layouts:' . $name;
+      $layouts['hyde_layouts:' . $name] = hyde_panels_layout_merge_plugin($plugin, $layout);
+    }
   }
   //dpm($layouts);
   return $layouts;

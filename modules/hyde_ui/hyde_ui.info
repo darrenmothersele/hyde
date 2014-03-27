@@ -6,3 +6,4 @@ package = Hyde
 dependencies[] = hyde
 dependencies[] = querypath
 dependencies[] = devel
+dependencies[] = styleguide

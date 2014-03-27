@@ -25,6 +25,14 @@ function hyde_ui_menu() {
     'type' => MENU_LOCAL_TASK,
     'file' => 'hyde_ui.admin.inc',
   );
+  $items['admin/appearance/hyde/atoms'] = array(
+    'title' => 'Atoms',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('hyde_ui_atom_generator_form'),
+    'access arguments' => array('administer hyde'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'hyde_ui.admin.inc',
+  );
 
   return $items;
 }

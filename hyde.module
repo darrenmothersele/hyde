@@ -89,9 +89,9 @@ function hyde_system_info_alter(&$info, $file, $type) {
   if ($type == 'theme') {
     //dpm($file);
     //dpm($info);
-    if ($file->name == 'hyde_theme') {
+    $theme = hyde_get_theme();
+    if ($file->name == 'hyde_theme' && !empty($theme->name)) {
       //dpm($info);
-      $theme = hyde_get_theme();
       $info['name'] = $theme->name;
       $info['core'] = '7.x';
       if (!empty($theme->logo)) {
